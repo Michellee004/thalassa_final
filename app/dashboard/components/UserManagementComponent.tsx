@@ -25,6 +25,7 @@ export default function UserManagementComponent() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // const fetchCurrentUser = async () => {
   //   const { data: { user } } = await supabase.auth.getUser();
@@ -76,25 +77,41 @@ export default function UserManagementComponent() {
   const handleEditUser = async () => {
     if (!selectedUser || !formData.name) return;
     setActionLoading(true);
-    await supabase.from('profiles').update({
-      user_name: formData.name,
-      user_role: formData.role,
-    }).eq('user_id', selectedUser.user_id);
-    setShowEditModal(false);
-    fetchUsers();
+    
+    const { error } = await supabase
+      .from('User') // Sebelumnya 'profiles', diubah menjadi 'User'
+      .update({
+        user_name: formData.name,
+        user_role: formData.role,
+      })
+      .eq('user_id', selectedUser.user_id);
+
+    if (error) {
+      console.error("Error saat edit:", error);
+      setErrorMsg(error.message); // Menampilkan pesan error jika gagal
+    } else {
+      setShowEditModal(false);
+      fetchUsers();
+    }
     setActionLoading(false);
   };
 
   const handleDeleteUser = async () => {
     if (!selectedUser) return;
     setActionLoading(true);
-    await fetch('/api/admin/delete-user', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: selectedUser.user_id }),
-    });
-    setShowDeleteModal(false);
-    fetchUsers();
+    
+    const { error } = await supabase
+      .from('User')
+      .delete()
+      .eq('user_id', selectedUser.user_id);
+
+    if (error) {
+      console.error("Error saat delete:", error);
+      setErrorMsg(error.message);
+    } else {
+      setShowDeleteModal(false);
+      fetchUsers();
+    }
     setActionLoading(false);
   };
 
@@ -105,14 +122,22 @@ export default function UserManagementComponent() {
     }
     setActionLoading(true);
     setErrorMsg('');
-    await fetch('/api/admin/change-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: selectedUser?.user_id, password: newPassword }),
-    });
-    setShowPasswordModal(false);
-    setNewPassword('');
-    setConfirmPassword('');
+
+    // Langsung update ke tabel 'User' di database Supabase
+    const { error } = await supabase
+      .from('User')
+      .update({ user_password: newPassword })
+      .eq('user_id', selectedUser?.user_id);
+
+    if (error) {
+      console.error("Error saat ganti password:", error);
+      setErrorMsg(error.message);
+    } else {
+      setShowPasswordModal(false);
+      setNewPassword('');
+      setConfirmPassword('');
+      fetchUsers(); // Memanggil ulang data agar tabel di layar langsung ter-update
+    }
     setActionLoading(false);
   };
 
@@ -136,6 +161,12 @@ export default function UserManagementComponent() {
   const operators = users.filter(
     u => u.user_role === 'Operator'
   ).length;
+
+  // Filter users berdasarkan nama atau email
+  const filteredUsers = users.filter((user) =>
+    user.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.user_email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="animate-fade-in text-white w-full font-sans">
@@ -182,11 +213,45 @@ export default function UserManagementComponent() {
       </div>
 
       {/* TABLE */}
+      {/* TABLE */}
       <div className="bg-[#0b0a0e] border border-gray-800/60 rounded-2xl overflow-hidden">
-        <div className="flex justify-between items-center p-5 border-b border-gray-800/60">
-          <h3 className="text-xs font-bold tracking-widest text-purple-400 uppercase font-mono">System Users</h3>
-          <span className="text-xs text-gray-500 font-mono">{totalUsers} records</span>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 border-b border-gray-800/60 gap-4 sm:gap-0">
+          
+          {/* KELOMPOK KIRI: Judul + Icon + Input Search */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 w-full sm:w-auto">
+            <h3 className="text-xs font-bold tracking-widest text-purple-400 uppercase font-mono whitespace-nowrap">
+              System Users
+            </h3>
+            
+            {/* SEARCH CONTAINER (Icon di luar box) */}
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              {/* Icon Search di luar */}
+              <svg 
+                className="w-5 h-5 text-gray-400 flex-shrink-0" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              
+              {/* Input Box yang Proporsional */}
+              <input
+                type="text"
+                placeholder="Search name or email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full sm:w-72 bg-[#121016] border border-gray-800 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors placeholder-gray-500 shadow-inner"
+              />
+            </div>
+          </div>
+
+          {/* KELOMPOK KANAN: Total Records */}
+          <span className="text-xs text-gray-500 font-mono self-end sm:self-auto">
+            {filteredUsers.length} records
+          </span>
         </div>
+        
         {loading ? (
           <div className="text-gray-500 text-center py-10">Loading...</div>
         ) : (
@@ -201,7 +266,7 @@ export default function UserManagementComponent() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
+                {filteredUsers.map((user) => (
                   <tr key={user.user_id} className="border-b border-gray-800/40 hover:bg-[#12101a] transition-colors">
                     <td className="p-5">
                       <div className="flex items-center gap-3">

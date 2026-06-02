@@ -13,6 +13,9 @@ export default function VesselManagement() {
     id: '', nama: '', jenis: '', kode: '', kapasitas: '', status: 'Active'
   });
 
+  // State untuk search term
+  const [searchTerm, setSearchTerm] = useState('');
+
   const fetchVessels = async () => {
     setLoading(true);
     const { data, error } = await supabase.from('vessel').select('*');
@@ -47,11 +50,49 @@ export default function VesselManagement() {
     }
   };
 
+  // Logika filter berdasarkan nama, jenis, atau kode kapal
+  const filteredVessels = vesselList.filter((vessel) =>
+    vessel.nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    vessel.jenis?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    vessel.kode?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="p-6 bg-[#0c0a13] rounded-2xl border border-gray-800 animate-fade-in">
-      <div className="flex justify-between mb-8">
-        <h2 className="text-white text-xl font-bold font-mono tracking-widest uppercase border-l-4 border-purple-500 pl-4">Vessel Management</h2>
-        <button onClick={() => { setIsEditing(false); setShowModal(true); }} className="bg-purple-600 px-6 py-3 rounded-xl text-white font-bold tracking-widest hover:bg-purple-500 transition-all">+ Add Vessel</button>
+      
+      {/* 1. KEMBALI KE TEMPAT AWAL: Judul di kiri, Tombol di kanan pas sejajar */}
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-white text-xl font-bold font-mono tracking-widest uppercase border-l-4 border-purple-500 pl-4">
+          Vessel Management
+        </h2>
+        <button 
+          onClick={() => { setIsEditing(false); setShowModal(true); }} 
+          className="bg-purple-600 px-6 py-3 rounded-xl text-white font-bold tracking-widest hover:bg-purple-500 transition-all"
+        >
+          + Add Vessel
+        </button>
+      </div>
+
+      {/* 2. STANDALONE SEARCH BAR: Letaknya proporsional, icon di luar, tidak mengganggu tombol */}
+      <div className="flex items-center gap-3 mb-6">
+        {/* Icon Search di Luar */}
+        <svg 
+          className="w-5 h-5 text-gray-400 flex-shrink-0" 
+          fill="none" 
+          viewBox="0 0 24 24" 
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        
+        {/* Input Box Menyesuaikan */}
+        <input
+          type="text"
+          placeholder="Search vessel name, type, or code..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full sm:w-72 bg-[#121016] border border-gray-800 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors placeholder-gray-500 shadow-inner"
+        />
       </div>
 
       <div className="overflow-x-auto">
@@ -68,7 +109,7 @@ export default function VesselManagement() {
               </tr>
             </thead>
             <tbody className="text-white text-sm">
-              {vesselList.map((v) => (
+              {filteredVessels.map((v) => (
                 <tr key={v.id} className="border-b border-gray-800/50 hover:bg-white/5">
                   <td className="py-4">{v.nama}</td>
                   <td className="py-4">{v.jenis}</td>
@@ -87,6 +128,13 @@ export default function VesselManagement() {
                   </td>
                 </tr>
               ))}
+              {filteredVessels.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="text-gray-500 text-center py-10 text-sm">
+                    Tidak ada data vessel yang cocok dengan pencarian.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         )}

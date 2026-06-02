@@ -16,6 +16,9 @@ export default function CargoManagementComponent() {
     status_pengiriman: 'Diproses', deskripsi: ''
   });
 
+  // 1. STATE UNTUK SEARCH TERM
+  const [searchTerm, setSearchTerm] = useState('');
+
   const fetchCargo = async () => {
     setLoading(true);
     const { data, error } = await supabase.from('cargo').select('*').order('created_at', { ascending: false });
@@ -69,16 +72,53 @@ export default function CargoManagementComponent() {
     });
   };
 
+  // 2. LOGIKA FILTER CARGO (Berdasarkan Resi, Pengirim, Kota Tujuan, atau Jenis Barang)
+  const filteredCargo = cargoList.filter((item) =>
+    item.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.nama_pengirim?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.kota_tujuan?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.jenis_barang?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
-    <div className="p-6 animate-fade-in">
-      <div className="flex justify-end mb-6">
-        <button onClick={() => setShowModal(true)} className="px-8 py-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold tracking-widest shadow-[0_0_20px_rgba(147,51,234,0.3)] transition-all">
-          + ADD CARGO
+    <div className="p-6 bg-[#0c0a13] rounded-2xl border border-gray-800 animate-fade-in">
+      
+      {/* 3. HEADER UTAMA: Judul di kiri, tombol "+ ADD CARGO" sejajar di kanan atas */}
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-white text-xl font-bold font-mono tracking-widest uppercase border-l-4 border-purple-500 pl-4">
+          Cargo Management
+        </h2>
+        <button 
+          onClick={() => setShowModal(true)} 
+          className="bg-purple-600 px-6 py-3 rounded-xl text-white font-bold tracking-widest hover:bg-purple-500 transition-all"
+        >
+          + Add Cargo
         </button>
       </div>
 
-      <div className="bg-[#0c0a13] border border-gray-800/60 rounded-2xl p-8 shadow-2xl">
-        <h3 className="text-white font-bold mb-6 font-mono tracking-widest uppercase">Data Cargo</h3>
+      {/* 4. SEARCH BAR: Terpisah di bawah header dengan icon di luar */}
+      <div className="flex items-center gap-3 mb-6">
+        {/* Icon Search di Luar */}
+        <svg 
+          className="w-5 h-5 text-gray-400 flex-shrink-0" 
+          fill="none" 
+          viewBox="0 0 24 24" 
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        
+        {/* Input Box Menyesuaikan */}
+        <input
+          type="text"
+          placeholder="Search resi, sender, destination, or type..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full sm:w-72 bg-[#121016] border border-gray-800 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors placeholder-gray-500 shadow-inner"
+        />
+      </div>
+
+      <div className="overflow-x-auto">
         {loading ? (
           <div className="text-gray-500 text-center py-10">Loading...</div>
         ) : cargoList.length === 0 ? (
@@ -93,7 +133,8 @@ export default function CargoManagementComponent() {
               </tr>
             </thead>
             <tbody className="text-white text-sm">
-              {cargoList.map((item) => (
+              {/* 5. MAPPING DATA YANG SUDAH DI-FILTER */}
+              {filteredCargo.map((item) => (
                 <tr key={item.id} className="border-b border-gray-800/50 hover:bg-white/5">
                   <td className="py-4 font-mono text-purple-400">{item.id}</td>
                   <td className="py-4">{item.nama_pengirim}</td>
@@ -112,6 +153,13 @@ export default function CargoManagementComponent() {
                   </td>
                 </tr>
               ))}
+              {filteredCargo.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="text-gray-500 text-center py-10 text-sm">
+                    Tidak ada data kargo yang cocok dengan pencarian.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         )}
