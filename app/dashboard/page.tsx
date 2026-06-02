@@ -76,16 +76,32 @@ export default function DashboardPage() {
   const supabase = createClient();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login');
+  const checkAuth = () => {
+    const savedUser = localStorage.getItem('user');
+    
+    if (!savedUser) {
+      router.push('/login');
+      return;
+    }
+
+    try {
+      const user = JSON.parse(savedUser);
+      
+      if (user.user_role === 'Admin') {
+        setIsCheckingAuth(false); 
+      } else if (user.user_role === 'Operator') {
+        router.push('/operator'); 
       } else {
-        setIsCheckingAuth(false);
+        router.push('/login');
       }
-    };
-    checkAuth();
-  }, [router, supabase]);
+    } catch (error) {
+      console.error('Error parsing user data:', error);
+      router.push('/login');
+    }
+  };
+
+  checkAuth();
+}, [router]);
 
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [newVessel, setNewVessel] = useState({
