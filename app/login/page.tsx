@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react"; // 1. Tambah useEffect
 import { useRouter } from "next/navigation";
+import LoadingLogin from "./loading"; // 2. Import Skeleton Login
 import "../css/login.css";
 import { createClient } from "../../utils/supabase/client";
 
@@ -10,7 +11,6 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [showPassword, setShowPassword] = useState(false);
 
   const [emailError, setEmailError] = useState("");
@@ -18,34 +18,38 @@ export default function LoginPage() {
   const [generalError, setGeneralError] = useState("");
 
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true); // 3. State penahan halaman
+
+  useEffect(() => {
+    // Tahan skeleton selama 1 detik (1000ms) saat halaman diakses pertama kali
+    const timer = setTimeout(() => {
+      setPageLoading(false);
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const supabase = createClient();
 
+  // ... simpan fungsi clearErrors, showPasswordOnHold, dll milikmu di sini ...
   const clearErrors = () => {
     setEmailError("");
     setPasswordError("");
     setGeneralError("");
   };
 
-  const showPasswordOnHold = () => {
-    setShowPassword(true);
-  };
-
-  const hidePasswordAfterHold = () => {
-    setShowPassword(false);
-  };
+  const showPasswordOnHold = () => { setShowPassword(true); };
+  const hidePasswordAfterHold = () => { setShowPassword(false); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearErrors();
-
     const trimmedEmail = email.trim();
 
     if (!trimmedEmail) {
       setEmailError("Email cannot be empty");
       return;
     }
-
     if (!password) {
       setPasswordError("Password cannot be empty");
       return;
@@ -75,7 +79,6 @@ export default function LoginPage() {
         window.location.replace("/dashboard");
         return;
       }
-
       if (data.user_role === "Operator") {
         window.location.replace("/operator");
         return;
@@ -89,6 +92,11 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  // 4. JIKA PAGE LOADING AKTIF, TAMPILKAN SKELETON
+  if (pageLoading) {
+    return <LoadingLogin />;
+  }
 
   return (
     <>

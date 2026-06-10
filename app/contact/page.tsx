@@ -12,7 +12,7 @@ export default function Contact() {
     // Jeda buatan selama 1 detik (1000ms)
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 1000);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, []);
@@ -26,7 +26,7 @@ export default function Contact() {
       </>
     );
   }
-  
+
   return (
     <>
       <Navbar />

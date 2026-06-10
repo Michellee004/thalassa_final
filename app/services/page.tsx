@@ -35,7 +35,7 @@ export default function Services() {
     // 4. Beri jeda buatan selama 1.5 detik agar skeleton sempat muncul dan terlihat
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 1500);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, []);

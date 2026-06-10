@@ -12,7 +12,7 @@ export default function Fleet() {
     // JEDA BUATAN: Diubah menjadi 1 detik (1000ms) sesuai permintaan
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 1000);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, []);
