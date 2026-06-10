@@ -89,12 +89,6 @@ export default function TrackShipmentPage() {
           </button>
         </form>
 
-        <div className="track-example">
-          <span>Example:</span>
-          <strong>PLF-2026-0417-SG</strong>
-          <strong>MV-POLARIS-001</strong>
-        </div>
-
         <div className="track-features">
           <div className="track-feature">
             <span />

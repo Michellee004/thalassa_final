@@ -1,9 +1,32 @@
 "use client";
 
+import { useEffect, useState } from "react"; // 1. Tambah Hook React
 import Navbar from "../components/Navbar";
+import LoadingContact from "./loading"; // 2. Jalankan Import Skeleton
 import "../css/home.css";
 
 export default function Contact() {
+  const [isLoading, setIsLoading] = useState(true); // 3. Set default awal true
+
+  useEffect(() => {
+    // Jeda buatan selama 1 detik (1000ms)
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // 4. Kondisi saat state loading aktif
+  if (isLoading) {
+    return (
+      <>
+        <Navbar />
+        <LoadingContact />
+      </>
+    );
+  }
+  
   return (
     <>
       <Navbar />

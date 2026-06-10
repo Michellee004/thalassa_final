@@ -1,9 +1,32 @@
 "use client";
 
+import { useEffect, useState } from "react"; 
 import Navbar from "../components/Navbar";
+import LoadingFleet from "./loading"; 
 import "../css/home.css";
 
 export default function Fleet() {
+  const [isLoading, setIsLoading] = useState(true); 
+
+  useEffect(() => {
+    // JEDA BUATAN: Diubah menjadi 1 detik (1000ms) sesuai permintaan
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Jika masih loading dalam 1 detik pertama, tampilkan skeleton
+  if (isLoading) {
+    return (
+      <>
+        <Navbar />
+        <LoadingFleet />
+      </>
+    );
+  }
+
   return (
     <>
       <Navbar />
