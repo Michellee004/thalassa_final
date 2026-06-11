@@ -446,3 +446,43 @@ body {
   margin-top: 6px !important;
   margin-bottom: 30px !important;
 }
+
+/* FIX HOME TITLE SIZE ONLY */
+.home-content {
+  transform: translateY(-8px) !important;
+  padding-top: 0 !important;
+}
+
+.pill-badge {
+  margin-bottom: 36px !important;
+}
+
+.home-logo {
+  width: 100px !important;
+  height: 100px !important;
+  margin-bottom: 22px !important;
+}
+
+.home-title {
+  font-size: clamp(34px, 3.5vw, 58px) !important;
+  letter-spacing: 7px !important;
+  line-height: 0.95 !important;
+}
+
+.home-title-purple {
+  font-size: clamp(34px, 3.5vw, 58px) !important;
+  letter-spacing: 8px !important;
+  margin-top: 10px !important;
+  margin-bottom: 28px !important;
+  line-height: 1 !important;
+}
+
+.home-subtitle {
+  margin-top: 0 !important;
+  margin-bottom: 10px !important;
+}
+
+.home-desc {
+  margin-top: 6px !important;
+  margin-bottom: 28px !important;
+}

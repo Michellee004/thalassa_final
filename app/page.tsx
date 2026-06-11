@@ -11,7 +11,6 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Tahan skeleton selama 0.5 detik (500ms) saat halaman Home dimuat
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 300);

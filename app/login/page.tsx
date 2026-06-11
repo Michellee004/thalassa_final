@@ -21,7 +21,6 @@ export default function LoginPage() {
   const [pageLoading, setPageLoading] = useState(true); // 3. State penahan halaman
 
   useEffect(() => {
-    // Tahan skeleton selama 1 detik (1000ms) saat halaman diakses pertama kali
     const timer = setTimeout(() => {
       setPageLoading(false);
     }, 200);

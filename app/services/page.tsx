@@ -32,7 +32,6 @@ export default function Services() {
   const [isLoading, setIsLoading] = useState(true); // 3. Set default status loading ke true
 
   useEffect(() => {
-    // 4. Beri jeda buatan selama 1.5 detik agar skeleton sempat muncul dan terlihat
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 300);

@@ -9,7 +9,6 @@ export default function Contact() {
   const [isLoading, setIsLoading] = useState(true); // 3. Set default awal true
 
   useEffect(() => {
-    // Jeda buatan selama 1 detik (1000ms)
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 300);

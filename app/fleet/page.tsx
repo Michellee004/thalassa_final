@@ -9,7 +9,6 @@ export default function Fleet() {
   const [isLoading, setIsLoading] = useState(true); 
 
   useEffect(() => {
-    // JEDA BUATAN: Diubah menjadi 1 detik (1000ms) sesuai permintaan
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 300);
