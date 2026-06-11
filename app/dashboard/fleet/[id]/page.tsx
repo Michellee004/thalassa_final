@@ -11,9 +11,12 @@ import {
   CartesianGrid,
 } from "recharts";
 import "../../../css/fleet-detail.css";
+import { createClient } from "@/utils/supabase/client";
+
+const supabase = createClient();
 
 type VesselProfile = {
-  id: number;
+  id: string | number;
   name: string;
   type: string;
   code: string;
@@ -55,108 +58,110 @@ type LiveVesselState = {
   chartData: LivePoint[];
 };
 
-const vesselProfiles: VesselProfile[] = [
-  {
-    id: 1,
-    name: "MV Pacific Star",
-    type: "Container Ship",
-    code: "V001",
-    status: "EN ROUTE",
-    statusIcon: "≈",
-    latitude: 6.202,
+function getDeterministicVesselProfile(vessel: any): VesselProfile {
+  const idStr = String(vessel.id || '');
+  let seed = 0;
+  for (let i = 0; i < idStr.length; i++) {
+    seed += idStr.charCodeAt(i);
+  }
+
+  const mappedStatus = (vessel.status || '').toUpperCase();
+  
+  const captains = [
+    "Capt. James Anderson",
+    "Capt. Sarah Mitchell",
+    "Capt. Daniel Foster",
+    "Capt. Robert Hayes",
+    "Capt. Elena Rostova",
+    "Capt. Marcus Vance"
+  ];
+  const captain = captains[seed % captains.length];
+  
+  const crew = 15 + (seed % 15);
+  
+  const weatherLists = [
+    ["SUNNY", "CLOUDY", "LIGHT WIND"],
+    ["SUNNY", "CLOUDY", "CLEAR"],
+    ["CLOUDY", "RAINY", "HIGH WIND"],
+    ["WINDY", "CLOUDY", "CLEAR"]
+  ];
+  const weatherList = weatherLists[seed % weatherLists.length];
+  
+  let engine = "OPTIMAL";
+  let navigation = "OPERATIONAL";
+  let alerts = "ALL CLEAR";
+  let statusIcon = "≈";
+  let status = "EN ROUTE";
+
+  if (mappedStatus === "EN ROUTE" || mappedStatus === "ACTIVE") {
+    status = "EN ROUTE";
+    statusIcon = "≈";
+    engine = "OPTIMAL";
+    navigation = "OPERATIONAL";
+  } else if (mappedStatus === "IN PORT" || mappedStatus === "DOCKED" || mappedStatus === "MOORED") {
+    status = "IN PORT";
+    statusIcon = "●";
+    engine = "STANDBY";
+    navigation = "IN PORT";
+  } else if (mappedStatus === "DELAYED" || mappedStatus === "ROUTE REVIEW") {
+    status = "DELAYED";
+    statusIcon = "!";
+    engine = "CHECK REQUIRED";
+    navigation = "ROUTE REVIEW";
+    alerts = "DELAY WARNING";
+  } else if (mappedStatus === "MAINTENANCE" || mappedStatus === "SERVICE REQUIRED") {
+    status = "MAINTENANCE";
+    statusIcon = "⚙";
+    engine = "MAINTENANCE";
+    navigation = "OFFLINE";
+    alerts = "SERVICE REQUIRED";
+  }
+
+  const cargos = [
+    "Electronics & Machinery",
+    "Coal & Mineral Bulk",
+    "Fuel & Liquid Cargo",
+    "General Container Cargo",
+    "Agricultural Produce",
+    "Automotive Parts"
+  ];
+  const cargo = cargos[seed % cargos.length];
+  
+  const baseSpeed = status === "EN ROUTE" ? 14.5 + (seed % 6) : 0;
+  const baseHeading = (seed * 13) % 360;
+  
+  const ports = ['Singapore Strait', 'Port of Surabaya', 'Port Klang Anchorage', 'Bali Port', 'Makassar Port', 'Tanjung Priok Port'];
+  const location = ports[seed % ports.length];
+  const destination = ports[(seed + 1) % ports.length];
+  
+  const eta = status === "EN ROUTE" ? `Tomorrow, ${(10 + (seed % 12)).toString().padStart(2, '0')}:${(seed % 60).toString().padStart(2, '0')}` : "Docked";
+
+  return {
+    id: vessel.id,
+    name: vessel.nama,
+    type: vessel.jenis,
+    code: vessel.kode,
+    status,
+    statusIcon,
+    latitude: status === "EN ROUTE" ? -6.202 : -7.2575,
     latitudeDirection: "S",
-    longitude: 106.8426,
+    longitude: status === "EN ROUTE" ? 106.8426 : 112.7521,
     longitudeDirection: "E",
-    baseSpeed: 16.6,
-    baseHeading: 141,
-    fuel: 77,
-    location: "Singapore Strait",
-    destination: "Singapore Port",
-    eta: "Today, 18:45",
-    captain: "Capt. James Anderson",
-    crew: 25,
-    weatherList: ["SUNNY", "CLOUDY", "LIGHT WIND"],
-    engine: "OPTIMAL",
-    navigation: "OPERATIONAL",
-    alerts: "ALL CLEAR",
-    cargo: "Electronics & Machinery",
-  },
-  {
-    id: 2,
-    name: "MV Ocean Voyager",
-    type: "Bulk Carrier",
-    code: "V002",
-    status: "IN PORT",
-    statusIcon: "●",
-    latitude: 7.2575,
-    latitudeDirection: "S",
-    longitude: 112.7521,
-    longitudeDirection: "E",
-    baseSpeed: 0,
-    baseHeading: 0,
-    fuel: 56,
-    location: "Port of Surabaya",
-    destination: "Makassar Port",
-    eta: "Awaiting departure",
-    captain: "Capt. Sarah Mitchell",
-    crew: 22,
-    weatherList: ["SUNNY", "CLOUDY", "CLEAR"],
-    engine: "STANDBY",
-    navigation: "IN PORT",
-    alerts: "ALL CLEAR",
-    cargo: "Coal & Mineral Bulk",
-  },
-  {
-    id: 3,
-    name: "MV Maritime Express",
-    type: "Tanker",
-    code: "V003",
-    status: "DELAYED",
-    statusIcon: "!",
-    latitude: 3.003,
-    latitudeDirection: "N",
-    longitude: 101.3928,
-    longitudeDirection: "E",
-    baseSpeed: 2.4,
-    baseHeading: 267,
-    fuel: 62,
-    location: "Port Klang Anchorage",
-    destination: "Tanjung Priok Port",
-    eta: "Delayed, weather review",
-    captain: "Capt. Daniel Foster",
-    crew: 28,
-    weatherList: ["CLOUDY", "RAINY", "HIGH WIND"],
-    engine: "CHECK REQUIRED",
-    navigation: "ROUTE REVIEW",
-    alerts: "DELAY WARNING",
-    cargo: "Fuel & Liquid Cargo",
-  },
-  {
-    id: 4,
-    name: "MV Cargo Master",
-    type: "Container Ship",
-    code: "V004",
-    status: "MAINTENANCE",
-    statusIcon: "⚙",
-    latitude: 8.40952,
-    latitudeDirection: "S",
-    longitude: 115.18892,
-    longitudeDirection: "E",
-    baseSpeed: 0,
-    baseHeading: 0,
-    fuel: 30,
-    location: "Bali Port",
-    destination: "Maintenance Dock",
-    eta: "Maintenance mode",
-    captain: "Capt. Robert Hayes",
-    crew: 18,
-    weatherList: ["WINDY", "CLOUDY", "CLEAR"],
-    engine: "MAINTENANCE",
-    navigation: "OFFLINE",
-    alerts: "SERVICE REQUIRED",
-    cargo: "General Container Cargo",
-  },
-];
+    baseSpeed,
+    baseHeading,
+    fuel: 40 + (seed % 55),
+    location,
+    destination,
+    eta,
+    captain,
+    crew,
+    weatherList,
+    engine,
+    navigation,
+    alerts,
+    cargo
+  };
+}
 
 function formatTime(date: Date) {
   return date.toLocaleTimeString("en-GB", {
@@ -267,16 +272,28 @@ export default function FleetDetail() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
 
-  const vesselId = Number(params.id);
+  const [profile, setProfile] = useState<VesselProfile | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const profile = useMemo(() => {
-    return vesselProfiles.find((item) => item.id === vesselId);
-  }, [vesselId]);
+  useEffect(() => {
+    async function fetchVessel() {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.from('vessel').select('*').eq('id', params.id).single();
+        if (!error && data) {
+          setProfile(getDeterministicVesselProfile(data));
+        }
+      } catch (err) {
+        console.error('Error fetching vessel profile:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchVessel();
+  }, [params.id]);
 
-  const [liveState, setLiveState] = useState<LiveVesselState | null>(() => {
-    if (!profile) return null;
-    return createInitialLiveState(profile);
-  });
+  const [liveState, setLiveState] = useState<LiveVesselState | null>(null);
+
 
   useEffect(() => {
     if (!profile) return;
@@ -292,6 +309,19 @@ export default function FleetDetail() {
 
     return () => clearInterval(interval);
   }, [profile]);
+
+  if (loading) {
+    return (
+      <div className="fleet-detail-page" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: "48px", height: "48px", borderRadius: "50%", border: "4px solid #a855f7", borderTopColor: "transparent", animation: "spin 1s linear infinite" }}></div>
+        <style jsx global>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   if (!profile || !liveState) {
     return (

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../utils/supabase/client';
+import DashboardSkeleton from '../dashboard/components/DashboardSkeleton';
 const MapComponent = dynamic(() => import('../dashboard/components/MapComponent'), { 
   ssr: false, 
   loading: () => (
@@ -75,56 +76,103 @@ export default function OperatorPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'FLEET' | 'MAP' | 'ANALYTICS'>('FLEET');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCard, setActiveCard] = useState<number>(1);
-  const [fleetData, setFleetData] = useState(initialVessels);
+  const [activeCard, setActiveCard] = useState<number | string>('');
+  const [fleetData, setFleetData] = useState<any[]>([]);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isFetching, setIsFetching] = useState(true);
   const supabase = createClient();
 
-useEffect(() => {
-  const user = localStorage.getItem("user");
+  useEffect(() => {
+    const user = localStorage.getItem("user");
 
-  if (!user) {
-    router.push("/login");
-  } else {
-    setIsCheckingAuth(false);
-  }
-}, [router]);
+    if (!user) {
+      router.push("/login");
+    } else {
+      setIsCheckingAuth(false);
+    }
+  }, [router]);
 
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('thalassaFleetData');
-      if (saved) {
-        setFleetData(JSON.parse(saved));
-      }
-    } catch (error) {
-      console.error('Error loading local storage', error);
+  const mapDbStatus = (dbStatus: string): { status: string; colorKey: string } => {
+    const statusUpper = (dbStatus || '').toUpperCase();
+    if (statusUpper === 'EN ROUTE' || statusUpper === 'ACTIVE') {
+      return { status: 'EN ROUTE', colorKey: 'emerald' };
     }
-    const statuses = ['EN ROUTE', 'IN PORT', 'DELAYED', 'MAINTENANCE'];
-    const colorMap: Record<string, string> = {
-      'EN ROUTE': 'emerald',
-      'IN PORT': 'sky',
-      'DELAYED': 'yellow',
-      'MAINTENANCE': 'red'
+    if (statusUpper === 'IN PORT' || statusUpper === 'DOCKED' || statusUpper === 'MOORED') {
+      return { status: 'IN PORT', colorKey: 'sky' };
+    }
+    if (statusUpper === 'DELAYED' || statusUpper === 'ROUTE REVIEW') {
+      return { status: 'DELAYED', colorKey: 'yellow' };
+    }
+    if (statusUpper === 'MAINTENANCE' || statusUpper === 'SERVICE REQUIRED') {
+      return { status: 'MAINTENANCE', colorKey: 'red' };
+    }
+    return { status: statusUpper || 'EN ROUTE', colorKey: 'emerald' };
+  };
+
+  const getDeterministicVesselFields = (vessel: any) => {
+    const idStr = String(vessel.id || '');
+    let seed = 0;
+    for (let i = 0; i < idStr.length; i++) {
+      seed += idStr.charCodeAt(i);
+    }
+    
+    const mapped = mapDbStatus(vessel.status);
+    
+    let speed = '0.0';
+    if (mapped.status === 'EN ROUTE') {
+      speed = (12.0 + (seed % 8) + 0.5 * (seed % 3)).toFixed(1);
+    } else if (mapped.status === 'DELAYED') {
+      speed = (1.5 + (seed % 2)).toFixed(1);
+    }
+    
+    const heading = `${(seed * 17) % 360}°`;
+    const weathers = ['Sunny', 'Clear', 'Windy', 'Cloudy'];
+    const weather = weathers[seed % weathers.length];
+    const fuel = 40 + (seed % 50);
+    const ports = ['Singapore', 'Port of Surabaya', 'Port Klang', 'Bali Port', 'Balikpapan', 'Kuala Lumpur Port'];
+    const location = ports[seed % ports.length];
+
+    return {
+      id: vessel.id,
+      name: vessel.nama,
+      type: vessel.jenis,
+      status: mapped.status,
+      speed,
+      heading,
+      weather,
+      fuel,
+      location,
+      colorKey: mapped.colorKey,
+      capacity: vessel.kapasitas,
+      code: vessel.kode
     };
-    const interval = setInterval(() => {
-      setFleetData(prev => {
-        const newData = [...prev];
-        const randomIndex = Math.floor(Math.random() * newData.length);
-        const newStatus = statuses[Math.floor(Math.random() * statuses.length)];
-        newData[randomIndex] = {
-          ...newData[randomIndex],
-          status: newStatus,
-          colorKey: colorMap[newStatus],
-          speed: newStatus === 'EN ROUTE' ? (Math.random() * 5 + 14).toFixed(1) : 
-                 newStatus === 'DELAYED' ? (Math.random() * 2 + 1).toFixed(1) : '0.0'
-        };
-        return newData;
-      });
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  };
+
+  useEffect(() => {
+    async function fetchVessels() {
+      setIsFetching(true);
+      try {
+        const { data, error } = await supabase.from('vessel').select('*');
+        if (!error && data) {
+          const mappedVessels = data.map((v: any) => getDeterministicVesselFields(v));
+          setFleetData(mappedVessels);
+          if (mappedVessels.length > 0) {
+            setActiveCard(prev => {
+              const exists = mappedVessels.some(mv => mv.id === prev);
+              return exists ? prev : mappedVessels[0].id;
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching vessels:', err);
+      } finally {
+        setIsFetching(false);
+      }
+    }
+    fetchVessels();
+  }, [activeTab]);
 
   const stats = {
     total: fleetData.length,
@@ -276,7 +324,10 @@ useEffect(() => {
       </header>
       <main className="p-6 max-w-[1600px] mx-auto pt-10">
         {activeTab === 'FLEET' ? (
-          <>
+          isFetching ? (
+            <DashboardSkeleton />
+          ) : (
+            <>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8 mt-6">
           <div 
             onClick={() => setFilterStatus(null)}
@@ -545,7 +596,8 @@ useEffect(() => {
           </div>
         </div>
         </>
-        ) : activeTab === 'MAP' ? (
+        )
+      ) : activeTab === 'MAP' ? (
           <div className="animate-fade-in">
             <div className="flex justify-between items-end mb-8">
               <div>

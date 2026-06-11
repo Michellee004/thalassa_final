@@ -23,7 +23,7 @@ const createCustomIcon = (colorKey: string) => {
   });
 };
 interface Vessel {
-  id: number;
+  id: string | number;
   name: string;
   status: string;
   location: string;
@@ -31,28 +31,44 @@ interface Vessel {
   lat?: number;
   lng?: number;
 }
-const getCoordinates = (location: string): [number, number] => {
+const getCoordinates = (location: string, seedStr?: string): [number, number] => {
   const locMap: Record<string, [number, number]> = {
     'Singapore': [1.290270, 103.851959],
+    'Singapore Strait': [1.290270, 103.851959],
     'Port of Surabaya': [-7.1996, 112.7381],
     'Port Klang': [3.0014, 101.3965],
+    'Port Klang Anchorage': [3.0014, 101.3965],
     'Bali Port': [-8.7455, 115.1706],
     'Kuala Lumpur Port': [3.1390, 101.6869],
     'Balikpapan': [-1.2379, 116.8529],
+    'Makassar Port': [-5.1315, 119.4116],
+    'Tanjung Priok Port': [-6.1021, 106.8837],
+    'Jakarta': [-6.2088, 106.8456]
   };
-  if (!locMap[location]) {
-    const lat = -5 + (Math.random() * 4 - 2);
-    const lng = 110 + (Math.random() * 10 - 5);
-    return [lat, lng];
+  
+  if (locMap[location]) {
+    return locMap[location];
   }
-  return locMap[location];
+  
+  let seed = 0;
+  if (seedStr) {
+    for (let i = 0; i < seedStr.length; i++) {
+      seed += seedStr.charCodeAt(i);
+    }
+  } else {
+    seed = Math.floor(Math.random() * 1000);
+  }
+  
+  const lat = -8.0 + ((seed % 100) / 100) * 8.0;
+  const lng = 105.0 + (((seed * 7) % 100) / 100) * 35.0;
+  return [lat, lng];
 };
 export default function MapComponent({ vessels }: { vessels: Vessel[] }) {
   const tileUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
   return (
     <div className="w-full h-full rounded-2xl overflow-hidden border-2 border-purple-500/20 shadow-[0_0_30px_rgba(147,51,234,0.15)] relative z-0">
       <MapContainer 
-        center={[-2.5, 110]} 
+        center={[-2.5, 115]} 
         zoom={5} 
         style={{ height: '100%', width: '100%', background: '#0a0a0a' }}
         zoomControl={true}
@@ -62,7 +78,7 @@ export default function MapComponent({ vessels }: { vessels: Vessel[] }) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         />
         {vessels.map(vessel => {
-          const pos = getCoordinates(vessel.location);
+          const pos = getCoordinates(vessel.location, String(vessel.id));
           return (
             <Marker 
               key={vessel.id} 

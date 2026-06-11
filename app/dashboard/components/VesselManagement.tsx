@@ -9,7 +9,7 @@ export default function VesselManagement() {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
-    id: '', nama: '', jenis: '', kode: '', kapasitas: '', status: 'Active'});
+    id: '', nama: '', jenis: '', kode: '', kapasitas: '', status: 'En Route'});
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedVessel, setSelectedVessel] = useState<any | null>(null);
   const [vesselErrors, setVesselErrors] = useState({ nama: '', jenis: '', kode: '', kapasitas: '' });
@@ -49,16 +49,43 @@ export default function VesselManagement() {
     if (errors.nama || errors.jenis || errors.kode || errors.kapasitas) return;
 
     if (isEditing) {
-      await supabase.from('vessel').update({
+      const { error } = await supabase.from('vessel').update({
         nama: formData.nama, jenis: formData.jenis, kode: formData.kode,
         kapasitas: formData.kapasitas, status: formData.status
       }).eq('id', formData.id);
+      
+      if (error) {
+        console.error('Update error details: ' + JSON.stringify({
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        }));
+        console.error('Update payload: ' + JSON.stringify({
+          id: formData.id,
+          nama: formData.nama,
+          status: formData.status
+        }));
+        showToast('UPDATE FAILED', `${error.message} (${error.code})` || 'Failed to update vessel.');
+        return;
+      }
       showToast( 'VESSEL UPDATED', 'Vessel information has been updated successfully.');
     } else {
-      await supabase.from('vessel').insert({
+      const { error } = await supabase.from('vessel').insert({
         nama: formData.nama, jenis: formData.jenis, kode: formData.kode,
         kapasitas: formData.kapasitas, status: formData.status
       });
+      
+      if (error) {
+        console.error('Insert error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        showToast('CREATE FAILED', `${error.message} (${error.code})` || 'Failed to create vessel.');
+        return;
+      }
       showToast( 'VESSEL CREATED', 'Vessel has been added successfully.');
     }
     closeModal();
@@ -80,7 +107,7 @@ export default function VesselManagement() {
 
   const closeModal = () => {
     setShowModal(false);
-    setFormData({ id: '', nama: '', jenis: '', kode: '', kapasitas: '', status: 'Active' });
+    setFormData({ id: '', nama: '', jenis: '', kode: '', kapasitas: '', status: 'En Route' });
     setVesselErrors({ nama: '', jenis: '', kode: '', kapasitas: '' });
   };
 
@@ -167,14 +194,22 @@ export default function VesselManagement() {
                       <td className="p-5 text-sm text-gray-300">{v.kapasitas} Tons</td>
                       <td className="p-5">
                         <span className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider font-mono border ${
-                          v.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
-                          v.status === 'En Route' ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' :
-                          'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
-                        }`}>{v.status}</span>
+                          (v.status === 'En Route' || v.status === 'Active' || v.status === 'ACTIVE') ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
+                          v.status === 'In Port' ? 'bg-sky-500/10 text-sky-400 border-sky-500/30' :
+                          v.status === 'Delayed' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30' :
+                          v.status === 'Maintenance' ? 'bg-red-500/10 text-red-500 border-red-500/30' :
+                          'bg-gray-500/10 text-gray-400 border-gray-500/30'
+                        }`}>{(v.status === 'Active' || v.status === 'ACTIVE') ? 'En Route' : v.status}</span>
                       </td>
                       <td className="p-5 text-right">
                         <div className="flex justify-end gap-2">
-                          <button onClick={() => { setFormData(v); setIsEditing(true); setVesselErrors({ nama: '', jenis: '', kode: '', kapasitas: '' }); setShowModal(true); }} className="p-2 rounded-lg bg-[#121016] border border-gray-800 hover:border-gray-600 text-gray-400 hover:text-white transition-colors">
+                          <button onClick={() => { 
+                            const normalizedVessel = { ...v, status: (v.status === 'Active' || v.status === 'ACTIVE') ? 'En Route' : v.status };
+                            setFormData(normalizedVessel); 
+                            setIsEditing(true); 
+                            setVesselErrors({ nama: '', jenis: '', kode: '', kapasitas: '' }); 
+                            setShowModal(true); 
+                          }} className="p-2 rounded-lg bg-[#121016] border border-gray-800 hover:border-gray-600 text-gray-400 hover:text-white transition-colors">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                           </button>
                           <button onClick={() => { setSelectedVessel(v); setShowDeleteModal(true); }} className="p-2 rounded-lg bg-[#121016] border border-gray-800 hover:border-red-500/50 hover:text-red-400 text-gray-400 transition-colors">
@@ -272,9 +307,10 @@ export default function VesselManagement() {
               <div>
                 <label className="text-[10px] text-gray-400 tracking-widest mb-2 block uppercase">Status</label>
                 <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full bg-[#121016] border border-gray-800 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-purple-500">
-                  <option value="Active">Active</option>
-                  <option value="Maintenance">Maintenance</option>
                   <option value="En Route">En Route</option>
+                  <option value="In Port">In Port</option>
+                  <option value="Delayed">Delayed</option>
+                  <option value="Maintenance">Maintenance</option>
                 </select>
               </div>
             </div>

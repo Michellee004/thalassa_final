@@ -4,16 +4,53 @@ import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import LoadingFleet from "./loading"; 
 import "../css/home.css";
+import { createClient } from "@/utils/supabase/client";
+
+const supabase = createClient();
 
 export default function Fleet() {
   const [isLoading, setIsLoading] = useState(true); 
+  const [vessels, setVessels] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    activeFleets: 0,
+    completedVoyages: 0,
+    destinationPorts: 0
+  });
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 300);
+    async function fetchData() {
+      try {
+        const { data: vesselData } = await supabase.from("vessel").select("*");
+        const { data: cargoData } = await supabase.from("cargo").select("status_pengiriman, kota_tujuan");
+        
+        const vesselList = vesselData || [];
+        const cargoList = cargoData || [];
+        
+        // Calculate dynamic stats
+        const activeFleets = vesselList.filter(v => 
+          v.status?.toLowerCase() === "active" || v.status?.toLowerCase() === "en route"
+        ).length;
+        
+        const completedVoyages = cargoList.filter(c => 
+          c.status_pengiriman?.toLowerCase() === "received"
+        ).length;
+        
+        const uniqueDestinations = new Set(cargoList.map(c => c.kota_tujuan).filter(Boolean));
+        const destinationPorts = uniqueDestinations.size;
 
-    return () => clearTimeout(timer);
+        setVessels(vesselList);
+        setStats({
+          activeFleets: activeFleets || vesselList.length, // Fallback if none are marked active/enroute
+          completedVoyages: completedVoyages || 200,      // Fallback to mock if empty
+          destinationPorts: destinationPorts || 15        // Fallback to mock if empty
+        });
+      } catch (err) {
+        console.error("Error fetching database stats:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchData();
   }, []);
 
   // Jika masih loading dalam 1 detik pertama, tampilkan skeleton
@@ -26,6 +63,7 @@ export default function Fleet() {
     );
   }
 
+
   return (
     <>
       <Navbar />
@@ -34,17 +72,17 @@ export default function Fleet() {
         <section className="fleet-content-custom">
           <div className="fleet-stats-custom">
             <div className="fleet-stat-box-custom">
-              <div className="fleet-stat-value-custom">50+</div>
+              <div className="fleet-stat-value-custom">{stats.activeFleets}</div>
               <div className="fleet-stat-label-custom">ACTIVE FLEETS</div>
             </div>
 
             <div className="fleet-stat-box-custom">
-              <div className="fleet-stat-value-custom">200+</div>
+              <div className="fleet-stat-value-custom">{stats.completedVoyages}+</div>
               <div className="fleet-stat-label-custom">COMPLETED VOYAGES</div>
             </div>
 
             <div className="fleet-stat-box-custom">
-              <div className="fleet-stat-value-custom">15</div>
+              <div className="fleet-stat-value-custom">{stats.destinationPorts}</div>
               <div className="fleet-stat-label-custom">DESTINATION PORTS</div>
             </div>
 
@@ -132,6 +170,35 @@ export default function Fleet() {
               <p>Internationally certified crew</p>
             </div>
           </div>
+
+          {vessels.length > 0 && (
+            <div className="vessel-list-section">
+              <h2 className="vessel-list-title">OUR FLEET DATABASE</h2>
+              <div className="vessel-grid-custom">
+                {vessels.map((v) => (
+                  <div key={v.id} className="vessel-card-custom">
+                    <div className="vessel-card-header-custom">
+                      <span className="vessel-type-custom">{v.jenis || "Container Ship"}</span>
+                      <span className={`vessel-status-badge-custom status-${(v.status || "active").toLowerCase().replace(/\s+/g, '-')}`}>
+                        {v.status || "Active"}
+                      </span>
+                    </div>
+                    <h3 className="vessel-name-custom">{v.nama}</h3>
+                    <div className="vessel-details-row-custom">
+                      <div className="vessel-detail-item-custom">
+                        <span className="detail-label-custom">CODE</span>
+                        <span className="detail-value-custom font-mono">{v.kode}</span>
+                      </div>
+                      <div className="vessel-detail-item-custom">
+                        <span className="detail-label-custom">CAPACITY</span>
+                        <span className="detail-value-custom">{Number(v.kapasitas || 0).toLocaleString('id-ID')} Tons</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       </main>
 
@@ -275,6 +342,123 @@ export default function Fleet() {
           letter-spacing: 0.04em;
         }
 
+        .vessel-list-section {
+          margin-top: 64px;
+        }
+
+        .vessel-list-title {
+          font-size: 20px;
+          font-weight: 900;
+          letter-spacing: 0.15em;
+          text-align: center;
+          margin-bottom: 32px;
+          color: #a855f7;
+          text-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+        }
+
+        .vessel-grid-custom {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+          gap: 24px;
+        }
+
+        .vessel-card-custom {
+          padding: 24px;
+          border: 1.5px solid rgba(168, 85, 247, 0.3);
+          border-radius: 12px;
+          background: rgba(11, 9, 32, 0.65);
+          backdrop-filter: blur(10px);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24);
+          transition: all 0.3s ease;
+        }
+
+        .vessel-card-custom:hover {
+          border-color: rgba(168, 85, 247, 0.85);
+          transform: translateY(-4px);
+          box-shadow: 0 12px 40px rgba(168, 85, 247, 0.15);
+        }
+
+        .vessel-card-header-custom {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 16px;
+        }
+
+        .vessel-type-custom {
+          font-size: 11px;
+          color: rgba(226, 216, 255, 0.58);
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .vessel-status-badge-custom {
+          padding: 4px 10px;
+          border-radius: 999px;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          border: 1px solid currentColor;
+        }
+
+        .vessel-status-badge-custom.status-active,
+        .vessel-status-badge-custom.status-en-route {
+          background: rgba(16, 185, 129, 0.1);
+          color: #34d399;
+        }
+
+        .vessel-status-badge-custom.status-maintenance {
+          background: rgba(239, 68, 68, 0.1);
+          color: #f87171;
+        }
+
+        .vessel-status-badge-custom.status-in-port,
+        .vessel-status-badge-custom.status-docked {
+          background: rgba(14, 165, 233, 0.1);
+          color: #38bdf8;
+        }
+
+        .vessel-status-badge-custom.status-delayed {
+          background: rgba(234, 179, 8, 0.1);
+          color: #fbbf24;
+        }
+
+        .vessel-name-custom {
+          font-size: 20px;
+          font-weight: 800;
+          color: #ffffff;
+          margin: 0 0 20px 0;
+          letter-spacing: 0.02em;
+        }
+
+        .vessel-details-row-custom {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
+          padding-top: 16px;
+        }
+
+        .vessel-detail-item-custom {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .detail-label-custom {
+          font-size: 9px;
+          color: rgba(226, 216, 255, 0.4);
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+        }
+
+        .detail-value-custom {
+          font-size: 13px;
+          font-weight: 700;
+          color: rgba(226, 216, 255, 0.9);
+        }
+
         @media (max-width: 900px) {
           .fleet-page-custom {
             padding: 28px 24px 56px;
@@ -286,6 +470,10 @@ export default function Fleet() {
           }
 
           .fleet-features-custom {
+            grid-template-columns: 1fr;
+          }
+
+          .vessel-grid-custom {
             grid-template-columns: 1fr;
           }
 

@@ -1,14 +1,58 @@
 'use client';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { createClient } from '@/utils/supabase/client';
+
+const supabase = createClient();
+
 interface Vessel {
-  id: number;
+  id: number | string;
   name: string;
   status: string;
   speed: string;
   fuel: number;
 }
 export default function AnalyticsComponent({ fleetData }: { fleetData: Vessel[] }) {
+  const [cargoData, setCargoData] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchCargoDistribution() {
+      try {
+        const { data, error } = await supabase.from('cargo').select('jenis_barang, berat_barang');
+        if (!error && data) {
+          const distribution: Record<string, number> = {};
+          data.forEach((item: any) => {
+            const name = item.jenis_barang || 'General Cargo';
+            const weight = Number(item.berat_barang || 0) / 1000; // convert to tons
+            distribution[name] = (distribution[name] || 0) + weight;
+          });
+
+          const colors = ['#a855f7', '#c084fc', '#d8b4fe', '#8b5cf6', '#7c3aed', '#6366f1'];
+          const formatted = Object.entries(distribution).map(([name, val], idx) => ({
+            name,
+            value: Number(val.toFixed(1)),
+            color: colors[idx % colors.length]
+          }));
+
+          if (formatted.length === 0) {
+            setCargoData([
+              { name: 'Electronics', value: 3.5, color: '#a855f7' },
+              { name: 'Coal', value: 2.5, color: '#c084fc' },
+              { name: 'Crude Oil', value: 2.1, color: '#d8b4fe' },
+              { name: 'Consumer', value: 1.5, color: '#8b5cf6' },
+              { name: 'Vehicles', value: 1.2, color: '#7c3aed' },
+            ]);
+          } else {
+            setCargoData(formatted);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching cargo distribution:", err);
+      }
+    }
+    fetchCargoDistribution();
+  }, []);
+
   const totalVessels = fleetData.length;
   const activeVessels = fleetData.filter(v => v.status === 'EN ROUTE').length;
   const avgSpeed = (fleetData.reduce((acc, curr) => acc + parseFloat(curr.speed), 0) / (totalVessels || 1)).toFixed(1);
@@ -30,13 +74,6 @@ export default function AnalyticsComponent({ fleetData }: { fleetData: Vessel[] 
     { name: '12:00', active: 6, idle: 6 },
     { name: '16:00', active: 4, idle: 5 },
     { name: '20:00', active: 3, idle: 4 },
-  ];
-  const cargoData = [
-    { name: 'Electronics', value: 3.5, color: '#a855f7' },
-    { name: 'Coal', value: 2.5, color: '#c084fc' },
-    { name: 'Crude Oil', value: 2.1, color: '#d8b4fe' },
-    { name: 'Consumer', value: 1.5, color: '#8b5cf6' },
-    { name: 'Vehicles', value: 1.2, color: '#7c3aed' },
   ];
   const statuses = [
     { name: 'En Route', count: fleetData.filter(v => v.status === 'EN ROUTE').length, color: 'bg-emerald-400' },
